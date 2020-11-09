@@ -4,10 +4,8 @@ import com.edithking.myftp.entity.FileOperation;
 import com.edithking.myftp.service.impl.FileReadServiceImpl;
 import com.edithking.myftp.service.impl.FileWriteServiceImpl;
 import org.junit.Test;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 
-import javax.annotation.Resource;
 import java.util.List;
 
 @SpringBootTest
@@ -23,9 +21,9 @@ public class FileReadServiceImplTest {
         fileWriteService = new FileWriteServiceImpl();
         fileReadService = new FileReadServiceImpl();
         fileWriteService.setFileReadService(fileReadService);
-        fileWriteService.readProperties();
+//        fileWriteService.readProperties();
         List<FileOperation> fileOperations = fileReadService.getAllFileOperations();
-        fileOperations.forEach(e ->{
+        fileOperations.forEach(e -> {
             System.out.println(e);
         });
     }

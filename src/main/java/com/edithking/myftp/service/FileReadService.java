@@ -7,6 +7,9 @@ import java.util.List;
 
 public interface FileReadService {
 
-    public List<FileOperation> getAllFileOperations();
+    List<FileOperation> getAllFileOperations();
 
+    String getFileContext();
+
+    void setFileContext(String fileContext);
 }

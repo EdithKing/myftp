@@ -25,7 +25,7 @@ public class FileReadServiceImpl implements FileReadService {
     @Override
     public List<FileOperation> getAllFileOperations() {
         fileOperations.clear();
-        if(fileContext != null) {
+        if (fileContext != null) {
             try {
                 BufferedReader bufferedReader = new BufferedReader(new FileReader(fileContext));
                 String context = null;
@@ -36,22 +36,23 @@ public class FileReadServiceImpl implements FileReadService {
                 e.printStackTrace();
             }
             return fileOperations;
-        }else {
-            log.error("需要上传的内容的文件为空，",fileContext);
+        } else {
+            log.error("需要上传的内容的文件为空，", fileContext);
             return null;
         }
     }
-    private FileOperation getFileOperation(String fileContext){
-        System.out.println(fileContext);
+
+    private FileOperation getFileOperation(String fileContext) {
         Character type = fileContext.charAt(0);
-        System.out.println(fileContext.charAt(0));
-        System.out.println(type);
-        switch (type){
-           case 'A': return new FileOperation(OperationType.ADD.typeId, fileContext.substring(1));
-           case 'U': return new FileOperation(OperationType.UPDATE.typeId,fileContext.substring(1));
-           case 'D': return new FileOperation(OperationType.DELETE.typeId, fileContext.substring(1));
+        switch (type) {
+            case 'A':
+                return new FileOperation(OperationType.ADD.typeId, fileContext.substring(1));
+            case 'U':
+                return new FileOperation(OperationType.UPDATE.typeId, fileContext.substring(1));
+            case 'D':
+                return new FileOperation(OperationType.DELETE.typeId, fileContext.substring(1));
             default:
-                return new FileOperation(4,"空");
+                return new FileOperation(4, "空");
         }
     }
 }
