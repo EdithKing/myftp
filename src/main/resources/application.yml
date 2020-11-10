@@ -1,2 +1,2 @@
 logging:
-  file: C:/myftp.log
+  file: myftp.log

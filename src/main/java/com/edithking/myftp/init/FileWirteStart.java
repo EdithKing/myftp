@@ -17,6 +17,8 @@ public class FileWirteStart implements ApplicationRunner {
 
     @Override
     public void run(ApplicationArguments args) throws Exception {
-        fileWriteService.writeFile();
+        if (fileWriteService.writeFile().equals("SUCCESS")) {
+            System.exit(1);
+        }
     }
 }

@@ -16,6 +16,7 @@ import org.springframework.stereotype.Service;
 
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.InputStreamReader;
 import java.util.List;
 import java.util.Properties;
 
@@ -36,8 +37,8 @@ public class FileWriteServiceImpl implements FileWriteService {
         try {
             File curAllInOneProjectFile = new File(System.getProperty("user.dir"));
             File parentFile = curAllInOneProjectFile.getParentFile();
-            String parentPath = parentFile + "\\";
-            FileInputStream fileInputStream = new FileInputStream(parentPath + "file.properties");
+            String parentPath = parentFile + "/";
+            InputStreamReader fileInputStream = new InputStreamReader(new FileInputStream(parentPath + "file.properties"), "UTF-8");
             Properties properties = new Properties();
             properties.load(fileInputStream);
             file.setLocalPath(properties.getProperty("localPath"));
@@ -65,34 +66,48 @@ public class FileWriteServiceImpl implements FileWriteService {
             if (channelSftp != null) {
                 fileOperations.forEach(e -> {
                     try {
-                        channelSftp = (ChannelSftp) channel;
-                        String localFileName = fileProperties.getLocalPath() + e.getFileName();
-                        String remotePath = null;
+                        String localFileName = fileProperties.getLocalPath() + "\\" + e.getFileName();
+                        String remotePathTemp = fileProperties.getRemotePath() + "/" + e.getFileName();
+                        String remotePathFile = remotePathTemp.replace("\\", "/");
+                        String remotePath = remotePathFile.substring(0, remotePathFile.lastIndexOf("/"));
                         if (e.getTypeId() == 2) {
-                            remotePath = fileProperties.getRemotePath() + e.getFileName();
-                            channelSftp.rm(remotePath.replace("/", "\\"));
-                            log.info("文件删除成功", localFileName);
+                            channelSftp.rm(remotePathFile);
+                            log.info("文件删除成功:" + remotePathFile);
                         } else if (e.getTypeId() == 3) {
-                            remotePath = fileProperties.getRemotePath() + fileProperties.getRemotePath();
-                            channelSftp.put(localFileName, remotePath.replace("/", "\\"));
-                            log.info("文件更新成功", localFileName);
+                            channelSftp.put(localFileName, remotePath);
+                            log.info("文件更新成功:" + remotePathFile);
                         } else if (e.getTypeId() == 1) {
-                            remotePath = fileProperties.getRemotePath() + fileProperties.getRemotePath();
-                            if (channelSftp.ls(remotePath) == null) {
+                            if (!isDirExist(channelSftp, remotePath)) {
+                                log.info("目录不存在，新建一个目录");
                                 mkdir_P(channelSftp, remotePath);
                             }
-                            channelSftp.put(localFileName, remotePath.replace("/", "\\"));
-                            log.info("文件新增成功", localFileName);
+                            if (isDirExist(channelSftp, remotePath)) {
+                                channelSftp.put(localFileName, remotePath);
+                                log.info("文件新增成功:" + remotePathFile);
+                            }
                         }
                     } catch (Exception exception) {
+                        exception.printStackTrace();
                         log.error("文件上传失败", fileProperties.getLocalPath() + e.getFileName() + "错误原因", exception);
-                    } finally {
-                        channelSftp.disconnect();
                     }
+                    log.info("文件传输执行完成");
                 });
+                channelSftp.disconnect();
             }
         }
-        return "文件传输执行完成";
+        return "SUCCESS";
+    }
+
+    private boolean isDirExist(ChannelSftp channelSftp, String remotePath) {
+        boolean flag = true;
+        try {
+            if (!channelSftp.stat(remotePath).isDir()) {
+                return true;
+            }
+        } catch (Exception e) {
+            flag = false;
+        }
+        return flag;
     }
 
     private void mkdir_P(ChannelSftp channelSftp, String remotePath) {
@@ -100,8 +115,12 @@ public class FileWriteServiceImpl implements FileWriteService {
         String temp = "";
         try {
             for (int i = 0; i < paths.length; i++) {
-                temp = "/" + paths[i];
-                if (channelSftp.ls(temp) == null) {
+                if (temp.equals("/")) {
+                    temp = temp + paths[i];
+                } else {
+                    temp = temp + "/" + paths[i];
+                }
+                if (!isDirExist(channelSftp, temp)) {
                     channelSftp.mkdir(temp);
                 }
             }
@@ -122,6 +141,7 @@ public class FileWriteServiceImpl implements FileWriteService {
             log.debug("Session connected!");
             channel = session.openChannel("sftp");
             channel.connect();
+            channelSftp = (ChannelSftp) channel;
             log.debug("Channel connected!");
         } catch (Exception e) {
             log.error("远程主机登录异常", e);
