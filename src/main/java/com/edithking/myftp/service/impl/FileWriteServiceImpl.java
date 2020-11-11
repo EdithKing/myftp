@@ -38,7 +38,7 @@ public class FileWriteServiceImpl implements FileWriteService {
             File curAllInOneProjectFile = new File(System.getProperty("user.dir"));
             File parentFile = curAllInOneProjectFile.getParentFile();
             String parentPath = parentFile + "/";
-            InputStreamReader fileInputStream = new InputStreamReader(new FileInputStream(parentPath + "file.properties"), "UTF-8");
+            InputStreamReader fileInputStream = new InputStreamReader(new FileInputStream("file.properties"), "UTF-8");
             Properties properties = new Properties();
             properties.load(fileInputStream);
             file.setLocalPath(properties.getProperty("localPath"));
@@ -47,8 +47,8 @@ public class FileWriteServiceImpl implements FileWriteService {
             file.setRemotePath(properties.getProperty("remotePath"));
             file.setRemotePort(Integer.valueOf(properties.getProperty("remotePort")));
             file.setRemoteHost(properties.getProperty("remoteHost"));
-            fileReadService.setFileContext(parentPath + properties.getProperty("fileContext"));
-            log.info("配置文件读取完成，配置信息如下", file);
+            fileReadService.setFileContext(properties.getProperty("fileContext"));
+            log.info("配置文件读取完成，配置信息如下" + file);
             this.fileProperties = file;
         } catch (Exception e) {
             log.error("配置文件读取有误", e);
@@ -70,11 +70,15 @@ public class FileWriteServiceImpl implements FileWriteService {
                         String remotePathTemp = fileProperties.getRemotePath() + "/" + e.getFileName();
                         String remotePathFile = remotePathTemp.replace("\\", "/");
                         String remotePath = remotePathFile.substring(0, remotePathFile.lastIndexOf("/"));
+                        remotePathFile = remotePathFile.trim();
+                        remotePath = remotePath.trim();
                         if (e.getTypeId() == 2) {
                             channelSftp.rm(remotePathFile);
                             log.info("文件删除成功:" + remotePathFile);
                         } else if (e.getTypeId() == 3) {
-                            channelSftp.put(localFileName, remotePath);
+                            if (!isDirExist(channelSftp, remotePath)) {
+                                channelSftp.put(localFileName, remotePath);
+                            }
                             log.info("文件更新成功:" + remotePathFile);
                         } else if (e.getTypeId() == 1) {
                             if (!isDirExist(channelSftp, remotePath)) {
@@ -138,11 +142,11 @@ public class FileWriteServiceImpl implements FileWriteService {
             sshConfig.put("StrictHostKeyChecking", "no");
             session.setConfig(sshConfig);
             session.connect();
-            log.debug("Session connected!");
+            log.info("Session connected!");
             channel = session.openChannel("sftp");
             channel.connect();
             channelSftp = (ChannelSftp) channel;
-            log.debug("Channel connected!");
+            log.info("Channel connected!");
         } catch (Exception e) {
             log.error("远程主机登录异常", e);
         }
