@@ -94,8 +94,8 @@ public class FileWriteServiceImpl implements FileWriteService {
                         exception.printStackTrace();
                         log.error("文件上传失败", fileProperties.getLocalPath() + e.getFileName() + "错误原因", exception);
                     }
-                    log.info("文件传输执行完成");
                 });
+                log.info("文件传输执行完成");
                 channelSftp.disconnect();
             }
         }
