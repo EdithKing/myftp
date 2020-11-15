@@ -8,8 +8,6 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class FileOperation {
-
     private Integer typeId;
     private String fileName;
-
 }

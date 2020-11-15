@@ -15,6 +15,9 @@ import java.util.List;
 
 @Slf4j
 @Service
+/**
+ * fileContext文件读取操作类
+ */
 public class FileReadServiceImpl implements FileReadService {
 
     private List<FileOperation> fileOperations = new ArrayList<>();
@@ -22,6 +25,12 @@ public class FileReadServiceImpl implements FileReadService {
     @Setter
     private String fileContext;
 
+    /**
+     * 获取fileContext 文件中的内容
+     * 格式: 文件传输类型(A,U,D)以及文件在本地的绝对路径去掉本地文件开头目录
+     *
+     * @return
+     */
     @Override
     public List<FileOperation> getAllFileOperations() {
         fileOperations.clear();
@@ -42,6 +51,12 @@ public class FileReadServiceImpl implements FileReadService {
         }
     }
 
+    /**
+     * 创建对象并给文件属性以及文件名赋值
+     *
+     * @param fileContext
+     * @return
+     */
     private FileOperation getFileOperation(String fileContext) {
         Character type = fileContext.charAt(0);
         switch (type) {

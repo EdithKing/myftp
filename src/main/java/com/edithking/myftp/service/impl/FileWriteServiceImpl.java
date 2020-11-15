@@ -14,7 +14,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import java.io.File;
 import java.io.FileInputStream;
 import java.io.InputStreamReader;
 import java.util.List;
@@ -22,6 +21,9 @@ import java.util.Properties;
 
 @Slf4j
 @Service
+/**
+ * 文件传输操作类
+ */
 public class FileWriteServiceImpl implements FileWriteService {
 
     private FileProperties fileProperties;
@@ -32,12 +34,14 @@ public class FileWriteServiceImpl implements FileWriteService {
     private ChannelSftp channelSftp;
     private Channel channel;
 
+    /**
+     * 获取当前项目路径下的file.properties文件，并对其内容进行解析，赋值给FileProperties对象
+     *
+     * @return
+     */
     private FileProperties readProperties() {
         FileProperties file = new FileProperties();
         try {
-            File curAllInOneProjectFile = new File(System.getProperty("user.dir"));
-            File parentFile = curAllInOneProjectFile.getParentFile();
-            String parentPath = parentFile + "/";
             InputStreamReader fileInputStream = new InputStreamReader(new FileInputStream("file.properties"), "UTF-8");
             Properties properties = new Properties();
             properties.load(fileInputStream);
@@ -47,6 +51,9 @@ public class FileWriteServiceImpl implements FileWriteService {
             file.setRemotePath(properties.getProperty("remotePath"));
             file.setRemotePort(Integer.valueOf(properties.getProperty("remotePort")));
             file.setRemoteHost(properties.getProperty("remoteHost"));
+            if (null != properties.getProperty("replacePath")) {
+                readReplacePath(file, properties.getProperty("replacePath"));
+            }
             fileReadService.setFileContext(properties.getProperty("fileContext"));
             log.info("配置文件读取完成，配置信息如下" + file);
             this.fileProperties = file;
@@ -56,7 +63,28 @@ public class FileWriteServiceImpl implements FileWriteService {
         return file;
     }
 
+    /**
+     * 对文件路径开头需要替换的进行替换
+     *
+     * @param file
+     * @param replacePath
+     */
+    private void readReplacePath(FileProperties file, String replacePath) {
+        String[] replaces = replacePath.split(",");
+        for (int i = 0; i < replaces.length; i++) {
+            Integer size = replaces[i].indexOf("=");
+            String key = replaces[i].substring(0, size);
+            String value = replaces[i].substring(size + 1);
+            System.out.println(key + "  " + value);
+            file.addReplacePath(key, value);
+        }
+    }
 
+    /**
+     * 传输文件
+     *
+     * @return
+     */
     @Override
     public String writeFile() {
         FileProperties fileProperties = readProperties();
@@ -66,29 +94,31 @@ public class FileWriteServiceImpl implements FileWriteService {
             if (channelSftp != null) {
                 fileOperations.forEach(e -> {
                     try {
+                        //本地文件绝对路径
                         String localFileName = fileProperties.getLocalPath() + "\\" + e.getFileName();
-                        String remotePathTemp = fileProperties.getRemotePath() + "/" + e.getFileName();
-                        String remotePathFile = remotePathTemp.replace("\\", "/");
-                        String remotePath = remotePathFile.substring(0, remotePathFile.lastIndexOf("/"));
+                        String remotePathTemp = e.getFileName().replace("\\", "/");
+                        //经过替换后的远程文件目录路径，未含文件名，未包含file.properties中的远程文件目录
+                        String remotePath = fileProperties.getReplacePath(remotePathTemp);
+                        //remotePath + 文件名
+                        remotePathTemp = remotePath + remotePathTemp.substring(remotePathTemp.lastIndexOf("/"));
+                        //远程文件绝对目录
+                        String remotePathFile = fileProperties.getRemotePath() + "/" + remotePathTemp;
+                        remotePath = fileProperties.getRemotePath() + "/" + remotePath;
+                        //消除fileContext.txt的文件名中空格
                         remotePathFile = remotePathFile.trim();
                         remotePath = remotePath.trim();
+                        log.info("目的路径：" + remotePath);
+                        log.info("目的文件名：" + remotePathFile);
+                        //删除文件
                         if (e.getTypeId() == 2) {
                             channelSftp.rm(remotePathFile);
                             log.info("文件删除成功:" + remotePathFile);
-                        } else if (e.getTypeId() == 3) {
+                        } else if (e.getTypeId() == 3 || e.getTypeId() == 1) {
                             if (!isDirExist(channelSftp, remotePath)) {
+                                log.info("目录不存在，新建一个目录" + remotePath);
                                 channelSftp.put(localFileName, remotePath);
                             }
                             log.info("文件更新成功:" + remotePathFile);
-                        } else if (e.getTypeId() == 1) {
-                            if (!isDirExist(channelSftp, remotePath)) {
-                                log.info("目录不存在，新建一个目录");
-                                mkdir_P(channelSftp, remotePath);
-                            }
-                            if (isDirExist(channelSftp, remotePath)) {
-                                channelSftp.put(localFileName, remotePath);
-                                log.info("文件新增成功:" + remotePathFile);
-                            }
                         }
                     } catch (Exception exception) {
                         exception.printStackTrace();
@@ -102,6 +132,13 @@ public class FileWriteServiceImpl implements FileWriteService {
         return "SUCCESS";
     }
 
+    /**
+     * 判断远程主机目录是否存在
+     *
+     * @param channelSftp
+     * @param remotePath
+     * @return
+     */
     private boolean isDirExist(ChannelSftp channelSftp, String remotePath) {
         boolean flag = true;
         try {
@@ -114,6 +151,12 @@ public class FileWriteServiceImpl implements FileWriteService {
         return flag;
     }
 
+    /**
+     * 层次创建远程目录
+     *
+     * @param channelSftp
+     * @param remotePath
+     */
     private void mkdir_P(ChannelSftp channelSftp, String remotePath) {
         String paths[] = remotePath.split("/");
         String temp = "";
@@ -133,6 +176,9 @@ public class FileWriteServiceImpl implements FileWriteService {
         }
     }
 
+    /**
+     * 登录远程主机
+     */
     private void login() {
         try {
             JSch jSch = new JSch();
