@@ -18,6 +18,7 @@ import java.io.FileInputStream;
 import java.io.InputStreamReader;
 import java.util.List;
 import java.util.Properties;
+import java.util.Vector;
 
 @Slf4j
 @Service
@@ -63,6 +64,8 @@ public class FileWriteServiceImpl implements FileWriteService {
         return file;
     }
 
+
+
     /**
      * 对文件路径开头需要替换的进行替换
      *
@@ -75,7 +78,6 @@ public class FileWriteServiceImpl implements FileWriteService {
             Integer size = replaces[i].indexOf("=");
             String key = replaces[i].substring(0, size);
             String value = replaces[i].substring(size + 1);
-            System.out.println(key + "  " + value);
             file.addReplacePath(key, value);
         }
     }
@@ -111,17 +113,21 @@ public class FileWriteServiceImpl implements FileWriteService {
                         log.info("目的文件名：" + remotePathFile);
                         //删除文件
                         if (e.getTypeId() == 2) {
-                            channelSftp.rm(remotePathFile);
-                            log.info("文件删除成功:" + remotePathFile);
+                            if(checkFileExist(remotePathFile)) {
+                                channelSftp.rm(remotePathFile);
+                                log.info("文件删除成功:" + remotePathFile);
+                            }else{
+                                log.info("文件不存在，不能删除文件:" + remotePathFile);
+                            }
                         } else if (e.getTypeId() == 3 || e.getTypeId() == 1) {
-                            if (!isDirExist(channelSftp, remotePath)) {
+                            if (!isDirExist(remotePath)) {
                                 log.info("目录不存在，新建一个目录" + remotePath);
+                                mkdir_P(remotePath);
                                 channelSftp.put(localFileName, remotePath);
                             }
                             log.info("文件更新成功:" + remotePathFile);
                         }
                     } catch (Exception exception) {
-                        exception.printStackTrace();
                         log.error("文件上传失败", fileProperties.getLocalPath() + e.getFileName() + "错误原因", exception);
                     }
                 });
@@ -133,13 +139,36 @@ public class FileWriteServiceImpl implements FileWriteService {
     }
 
     /**
+     * 判断远程主机文件是否存在
+     * @param remotePathFile
+     * @return
+     */
+    private Boolean checkFileExist(String remotePathFile){
+        Integer lastSize = remotePathFile.lastIndexOf("/");
+        String path = remotePathFile.substring(0,lastSize);
+        String fileName = remotePathFile.substring(lastSize);
+        if(isDirExist(path)){
+            try {
+                Vector vector =  channelSftp.ls(path);
+                for(int i = 0;i <vector.size();i++){
+                    if(vector.get(i).toString().indexOf(fileName) != -1){
+                        return true;
+                    }
+                }
+            }catch (Exception e){
+                log.error("删除文件检测文件是否存在出现异常" + e);
+            }
+        }
+        return false;
+    }
+
+    /**
      * 判断远程主机目录是否存在
      *
-     * @param channelSftp
      * @param remotePath
      * @return
      */
-    private boolean isDirExist(ChannelSftp channelSftp, String remotePath) {
+    private boolean isDirExist(String remotePath) {
         boolean flag = true;
         try {
             if (!channelSftp.stat(remotePath).isDir()) {
@@ -154,10 +183,9 @@ public class FileWriteServiceImpl implements FileWriteService {
     /**
      * 层次创建远程目录
      *
-     * @param channelSftp
      * @param remotePath
      */
-    private void mkdir_P(ChannelSftp channelSftp, String remotePath) {
+    private void mkdir_P(String remotePath) {
         String paths[] = remotePath.split("/");
         String temp = "";
         try {
@@ -167,7 +195,8 @@ public class FileWriteServiceImpl implements FileWriteService {
                 } else {
                     temp = temp + "/" + paths[i];
                 }
-                if (!isDirExist(channelSftp, temp)) {
+                if (!isDirExist(temp)) {
+                    log.info("创建目录"  + temp );
                     channelSftp.mkdir(temp);
                 }
             }

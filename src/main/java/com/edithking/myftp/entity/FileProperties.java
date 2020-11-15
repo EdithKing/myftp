@@ -62,11 +62,13 @@ public class FileProperties {
      * @return
      */
     public String getReplacePath(String checkPath) {
-        Iterator<String> iterator = replacePath.keySet().iterator();
-        while (iterator.hasNext()) {
-            String key = iterator.next();
-            if (checkPath.startsWith(key)) {
-                checkPath = replacePath.get(key) + checkPath.substring(key.length());
+        if(replacePath != null) {
+            Iterator<String> iterator = replacePath.keySet().iterator();
+            while (iterator.hasNext()) {
+                String key = iterator.next();
+                if (checkPath.startsWith(key)) {
+                    checkPath = replacePath.get(key) + checkPath.substring(key.length());
+                }
             }
         }
         return checkPath.substring(0, checkPath.lastIndexOf("/"));
