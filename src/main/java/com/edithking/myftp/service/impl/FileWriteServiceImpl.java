@@ -65,7 +65,6 @@ public class FileWriteServiceImpl implements FileWriteService {
     }
 
 
-
     /**
      * 对文件路径开头需要替换的进行替换
      *
@@ -107,24 +106,25 @@ public class FileWriteServiceImpl implements FileWriteService {
                         String remotePathFile = fileProperties.getRemotePath() + "/" + remotePathTemp;
                         remotePath = fileProperties.getRemotePath() + "/" + remotePath;
                         //消除fileContext.txt的文件名中空格
+                        localFileName = localFileName.trim();
                         remotePathFile = remotePathFile.trim();
                         remotePath = remotePath.trim();
                         log.info("目的路径：" + remotePath);
                         log.info("目的文件名：" + remotePathFile);
                         //删除文件
                         if (e.getTypeId() == 2) {
-                            if(checkFileExist(remotePathFile)) {
+                            if (checkFileExist(remotePathFile)) {
                                 channelSftp.rm(remotePathFile);
                                 log.info("文件删除成功:" + remotePathFile);
-                            }else{
+                            } else {
                                 log.info("文件不存在，不能删除文件:" + remotePathFile);
                             }
                         } else if (e.getTypeId() == 3 || e.getTypeId() == 1) {
                             if (!isDirExist(remotePath)) {
                                 log.info("目录不存在，新建一个目录" + remotePath);
                                 mkdir_P(remotePath);
-                                channelSftp.put(localFileName, remotePath);
                             }
+                            channelSftp.put(localFileName, remotePath);
                             log.info("文件更新成功:" + remotePathFile);
                         }
                     } catch (Exception exception) {
@@ -140,22 +140,23 @@ public class FileWriteServiceImpl implements FileWriteService {
 
     /**
      * 判断远程主机文件是否存在
+     *
      * @param remotePathFile
      * @return
      */
-    private Boolean checkFileExist(String remotePathFile){
+    private Boolean checkFileExist(String remotePathFile) {
         Integer lastSize = remotePathFile.lastIndexOf("/");
-        String path = remotePathFile.substring(0,lastSize);
+        String path = remotePathFile.substring(0, lastSize);
         String fileName = remotePathFile.substring(lastSize);
-        if(isDirExist(path)){
+        if (isDirExist(path)) {
             try {
-                Vector vector =  channelSftp.ls(path);
-                for(int i = 0;i <vector.size();i++){
-                    if(vector.get(i).toString().indexOf(fileName) != -1){
+                Vector vector = channelSftp.ls(path);
+                for (int i = 0; i < vector.size(); i++) {
+                    if (vector.get(i).toString().indexOf(fileName) != -1) {
                         return true;
                     }
                 }
-            }catch (Exception e){
+            } catch (Exception e) {
                 log.error("删除文件检测文件是否存在出现异常" + e);
             }
         }
@@ -196,7 +197,7 @@ public class FileWriteServiceImpl implements FileWriteService {
                     temp = temp + "/" + paths[i];
                 }
                 if (!isDirExist(temp)) {
-                    log.info("创建目录"  + temp );
+                    log.info("创建目录" + temp);
                     channelSftp.mkdir(temp);
                 }
             }

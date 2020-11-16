@@ -62,7 +62,7 @@ public class FileProperties {
      * @return
      */
     public String getReplacePath(String checkPath) {
-        if(replacePath != null) {
+        if (replacePath != null) {
             Iterator<String> iterator = replacePath.keySet().iterator();
             while (iterator.hasNext()) {
                 String key = iterator.next();
