@@ -147,7 +147,7 @@ public class FileWriteServiceImpl implements FileWriteService {
     private Boolean checkFileExist(String remotePathFile) {
         Integer lastSize = remotePathFile.lastIndexOf("/");
         String path = remotePathFile.substring(0, lastSize);
-        String fileName = remotePathFile.substring(lastSize);
+        String fileName = remotePathFile.substring(lastSize + 1);
         if (isDirExist(path)) {
             try {
                 Vector vector = channelSftp.ls(path);
