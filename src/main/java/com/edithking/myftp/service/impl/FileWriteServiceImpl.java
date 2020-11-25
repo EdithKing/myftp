@@ -92,15 +92,23 @@ public class FileWriteServiceImpl implements FileWriteService {
         if (fileProperties != null) {
             List<FileOperation> fileOperations = fileReadService.getAllFileOperations();
             login();
+            int result = 0;
             if (channelSftp != null) {
-                fileOperations.forEach(e -> {
+                for (int i = 0; i < fileOperations.size(); i++) {
+                    FileOperation e = fileOperations.get(i);
                     try {
-                        //本地文件绝对路径
-                        String localFileName = fileProperties.getLocalPath() + "\\" + e.getFileName();
-                        String remotePathTemp = e.getFileName().replace("\\", "/");
+                        //本地文件绝对路径or相对路径
+                        String localFileName = e.getFileName();
+                        if (!e.getFileName().startsWith(fileProperties.getLocalPath())) {
+                            //本地文件绝对路径
+                            localFileName = fileProperties.getLocalPath() + "\\" + localFileName;
+                        }
+                        //将文件绝对路径开头去掉
+                        String fileName = e.getFileName().replace(fileProperties.getLocalPath(), "");
+                        String remotePathTemp = fileName.replace("\\", "/");
                         //经过替换后的远程文件目录路径，未含文件名，未包含file.properties中的远程文件目录
                         String remotePath = fileProperties.getReplacePath(remotePathTemp);
-                        //remotePath + 文件名
+                        //远程文件相对目录
                         remotePathTemp = remotePath + remotePathTemp.substring(remotePathTemp.lastIndexOf("/"));
                         //远程文件绝对目录
                         String remotePathFile = fileProperties.getRemotePath() + "/" + remotePathTemp;
@@ -109,13 +117,12 @@ public class FileWriteServiceImpl implements FileWriteService {
                         localFileName = localFileName.trim();
                         remotePathFile = remotePathFile.trim();
                         remotePath = remotePath.trim();
-                        log.info("目的路径：" + remotePath);
-                        log.info("目的文件名：" + remotePathFile);
                         //删除文件
                         if (e.getTypeId() == 2) {
                             if (checkFileExist(remotePathFile)) {
                                 channelSftp.rm(remotePathFile);
                                 log.info("文件删除成功:" + remotePathFile);
+                                result++;
                             } else {
                                 log.info("文件不存在，不能删除文件:" + remotePathFile);
                             }
@@ -125,13 +132,16 @@ public class FileWriteServiceImpl implements FileWriteService {
                                 mkdir_P(remotePath);
                             }
                             channelSftp.put(localFileName, remotePath);
+                            result++;
                             log.info("文件更新成功:" + remotePathFile);
                         }
                     } catch (Exception exception) {
                         log.error("文件上传失败", fileProperties.getLocalPath() + e.getFileName() + "错误原因", exception);
                     }
-                });
+                }
                 log.info("文件传输执行完成");
+                int fail = fileOperations.size() - result;
+                log.info(" [操作文件总数:" + fileOperations.size() + " ,成功操作文件数目:" + result + " ,失败操作数目:" + fail + " ] ");
                 channelSftp.disconnect();
             }
         }

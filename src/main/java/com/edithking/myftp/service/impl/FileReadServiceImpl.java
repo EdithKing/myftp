@@ -67,7 +67,8 @@ public class FileReadServiceImpl implements FileReadService {
             case 'D':
                 return new FileOperation(OperationType.DELETE.typeId, fileContext.substring(1));
             default:
-                return new FileOperation(4, "空");
+                log.error("文件路径没有按照规定的开头,U更新,A新增,D删除");
+                return null;
         }
     }
 }
