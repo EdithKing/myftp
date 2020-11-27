@@ -9,7 +9,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.io.BufferedReader;
-import java.io.FileReader;
+import java.io.*;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -36,7 +36,9 @@ public class FileReadServiceImpl implements FileReadService {
         fileOperations.clear();
         if (fileContext != null) {
             try {
-                BufferedReader bufferedReader = new BufferedReader(new FileReader(fileContext));
+				FileInputStream fis = new FileInputStream(fileContext);
+				InputStreamReader isr = new InputStreamReader(fis,"UTF-8");
+                BufferedReader bufferedReader = new BufferedReader(isr);
                 String context = null;
                 while ((context = bufferedReader.readLine()) != null) {
                     fileOperations.add(getFileOperation(context));
