@@ -16,6 +16,7 @@ import com.edithking.myftp.service.FileReadService;
 import com.edithking.myftp.service.FileWriteService;
 import com.jcraft.jsch.Channel;
 import com.jcraft.jsch.ChannelSftp;
+import com.jcraft.jsch.ChannelSftp.LsEntry;
 import com.jcraft.jsch.JSch;
 import com.jcraft.jsch.Session;
 
@@ -91,6 +92,8 @@ public class FileWriteServiceImpl implements FileWriteService {
 	@Override
 	public String writeFile() {
 		FileProperties fileProperties = readProperties();
+		Properties props = System.getProperties();
+		String osName = props.getProperty("os.name");
 		if (fileProperties != null) {
 			List<FileOperation> fileOperations = fileReadService.getAllFileOperations();
 			login();
@@ -102,17 +105,24 @@ public class FileWriteServiceImpl implements FileWriteService {
 					try {
 						// 本地文件绝对路径or相对路径
 						String localFileName = e.getFileName();
-						if (!e.getFileName().startsWith(fileProperties.getLocalPath())) {
-							// 本地文件绝对路径
-							localFileName = fileProperties.getLocalPath() + "\\" + localFileName;
+						if (!localFileName.startsWith(fileProperties.getLocalPath())) {
+							localFileName = fileProperties.getLocalPath() + "/" + localFileName;
+						}
+						if (osName.startsWith("Window")) {
+							localFileName = localFileName.replaceAll("/", "\\");
+						} else if (osName.startsWith("Linux")) {
+							localFileName = localFileName.replaceAll("\\", "/");
 						}
 						// 将文件绝对路径开头去掉
-						String fileName = e.getFileName().replace(fileProperties.getLocalPath(), "");
+						String fileName = localFileName.replace(fileProperties.getLocalPath(), "");
+						// 远程主机是linux
 						String remotePathTemp = fileName.replace("\\", "/");
 						// 经过替换后的远程文件目录路径，未含文件名，未包含file.properties中的远程文件目录
 						String remotePath = fileProperties.getReplacePath(remotePathTemp);
-						// 远程文件相对目录
-						remotePathTemp = remotePath + remotePathTemp.substring(remotePathTemp.lastIndexOf("/"));
+						if (remotePathTemp.indexOf(".") != -1) {
+							// 远程文件相对目录 = 远程目录加文件名
+							remotePathTemp = remotePath + remotePathTemp.substring(remotePathTemp.lastIndexOf("/"));
+						}
 						// 远程文件绝对目录
 						String remotePathFile = fileProperties.getRemotePath() + "/" + remotePathTemp;
 						remotePath = fileProperties.getRemotePath() + "/" + remotePath;
@@ -120,14 +130,17 @@ public class FileWriteServiceImpl implements FileWriteService {
 						localFileName = localFileName.trim();
 						remotePathFile = remotePathFile.trim();
 						remotePath = remotePath.trim();
-						// 删除文件
+						// 删除文件以及文件夹
 						if (e.getTypeId() == 2) {
-							if (checkFileExist(remotePathFile)) {
+							if (remotePathFile.equals(remotePath)) {
+								deleteDir(remotePath);
+								result++;
+							} else if (checkFileExist(remotePathFile)) {
 								channelSftp.rm(remotePathFile);
 								log.info("文件删除成功:" + remotePathFile);
 								result++;
 							} else {
-								log.info("文件不存在，不能删除文件:" + remotePathFile);
+								log.info("文件或者文件夹不存在，不能删除:" + remotePathFile);
 							}
 						} else if (e.getTypeId() == 3 || e.getTypeId() == 1) {
 							if (!isDirExist(remotePath)) {
@@ -149,11 +162,30 @@ public class FileWriteServiceImpl implements FileWriteService {
 				}
 				log.info("文件传输执行完成");
 				int fail = fileOperations.size() - result - filedir;
-				log.info(" [操作文件总数:" + fileOperations.size() + " ,成功操作文件数目:" + result +" , 文件夹数目:" +filedir+ " , 失败操作数目:" + fail + " ] ");
+				log.info(" [操作文件总数:" + fileOperations.size() + " ,成功操作文件数目:" + result + " , 文件夹数目:" + filedir
+						+ " , 失败操作数目:" + fail + " ] ");
 				channelSftp.disconnect();
 			}
 		}
 		return "SUCCESS";
+	}
+
+	private boolean deleteDir(String path) {
+		try {
+			if (isDirExist(path)) {
+				Vector<LsEntry> vector = channelSftp.ls(path);
+				for (int i = 0; i < vector.size(); i++) {
+					deleteDir(vector.get(i).getFilename());
+				}
+				channelSftp.rmdir(path);
+			} else {
+				channelSftp.rm(path);
+			}
+			return true;
+		} catch (Exception e) {
+			log.error("删除文件有误:" + e.getMessage());
+		}
+		return false;
 	}
 
 	/**
