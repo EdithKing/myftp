@@ -74,6 +74,9 @@ public class FileProperties {
                 }
             }
         }
-        return checkPath.substring(0, checkPath.lastIndexOf("/"));
+        if (checkPath.lastIndexOf("/") != -1) {
+            return checkPath.substring(0, checkPath.lastIndexOf("/"));
+        }
+        return checkPath;
     }
 }
