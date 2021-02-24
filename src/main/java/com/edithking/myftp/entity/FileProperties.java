@@ -39,6 +39,26 @@ public class FileProperties {
      * 文件路径替换
      */
     private HashMap<String, String> replacePath;
+    /**
+     * svn的url
+     */
+    private String svnUrl;
+    /**
+     * svn根路径
+     */
+    private String svnPath;
+    /**
+     * svn用户名
+     */
+    private String svnUsername;
+    /**
+     * svn密码
+     */
+    private String svnPassword;
+    /**
+     * svn最后版本
+     */
+    private Long latestRevision;
 
     /**
      * 新增路径开头替换

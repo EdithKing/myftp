@@ -17,6 +17,7 @@ import org.springframework.stereotype.Service;
 
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.List;
 import java.util.Properties;
@@ -45,8 +46,10 @@ public class FileWriteServiceImpl implements FileWriteService {
      */
     private FileProperties readProperties() {
         FileProperties file = new FileProperties();
+        InputStreamReader fileInputStream = null;
+        InputStreamReader fileInputStream2 = null;
         try {
-            InputStreamReader fileInputStream = new InputStreamReader(new FileInputStream("file.properties"), "UTF-8");
+            fileInputStream = new InputStreamReader(new FileInputStream("file.properties"), "UTF-8");
             Properties properties = new Properties();
             properties.load(fileInputStream);
             String path = properties.getProperty("localPath");
@@ -66,14 +69,42 @@ public class FileWriteServiceImpl implements FileWriteService {
             file.setRemotePath(properties.getProperty("remotePath"));
             file.setRemotePort(Integer.valueOf(properties.getProperty("remotePort")));
             file.setRemoteHost(properties.getProperty("remoteHost"));
+            file.setSvnUrl(properties.getProperty("svnUrl"));
+            file.setSvnPath(properties.getProperty("svnPath"));
+            file.setSvnUsername(properties.getProperty("svnUsername"));
+            file.setSvnPassword(properties.getProperty("svnPassword"));
             if (null != properties.getProperty("replacePath")) {
                 readReplacePath(file, properties.getProperty("replacePath"));
             }
-            fileReadService.setFileContext(properties.getProperty("fileContext"));
-            log.info("配置文件读取完成，配置信息如下" + file);
+            fileInputStream2 = new InputStreamReader(new FileInputStream("last.properties"), "UTF-8");
+            Properties properties2 = new Properties();
+            properties.load(fileInputStream);
+            if (null == properties2.getProperty("latestRevision")) {
+                file.setLatestRevision(0L);
+            }else{
+                file.setLatestRevision(Long.valueOf(properties.getProperty("latestRevision")));
+            }
             this.fileProperties = file;
+            fileReadService.setFileContext(properties.getProperty("fileContext"));
+            fileReadService.setFileProperties(fileProperties);
+            log.info("配置文件读取完成，配置信息如下" + file);
         } catch (Exception e) {
             log.error("配置文件读取有误", e);
+        }finally {
+            if(null  != fileInputStream ){
+                try {
+                    fileInputStream.close();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+            if(null  != fileInputStream2 ){
+                try {
+                    fileInputStream.close();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
         }
         return file;
     }
@@ -110,6 +141,10 @@ public class FileWriteServiceImpl implements FileWriteService {
             int result = 0;
             int filedir = 0;
             if (channelSftp != null) {
+                if(fileOperations==null){
+                    log.info("获取需要合并的文件内容为空,本次合并结束");
+                    return "SUCCESS";
+                }
                 for (int i = 0; i < fileOperations.size(); i++) {
                     FileOperation e = fileOperations.get(i);
                     try {
@@ -137,7 +172,11 @@ public class FileWriteServiceImpl implements FileWriteService {
                         String remotePath = fileProperties.getReplacePath(remotePathTemp);
                         if (remotePathTemp.indexOf(".") != -1) {
                             // 远程文件相对目录 = 远程目录加文件名
-                            remotePathTemp = remotePath + remotePathTemp.substring(remotePathTemp.lastIndexOf("/"));
+                            if(-1 != remotePathTemp.lastIndexOf("/")) {
+                                remotePathTemp = remotePath + remotePathTemp.substring(remotePathTemp.lastIndexOf("/"));
+                            }else{
+                                remotePathTemp = remotePath;
+                            }
                         }
                         // 远程文件绝对目录
                         String remotePathFile = fileProperties.getRemotePath() + "/" + remotePathTemp;
@@ -238,6 +277,9 @@ public class FileWriteServiceImpl implements FileWriteService {
      * @return
      */
     private boolean isDirExist(String remotePath) {
+        if (remotePath.indexOf(".") != -1 && -1 != remotePath.lastIndexOf("/")){
+            remotePath = remotePath.substring(0,remotePath.lastIndexOf("/"));
+        }
         boolean flag = true;
         try {
             if (!channelSftp.stat(remotePath).isDir()) {

@@ -1,8 +1,10 @@
 package com.edithking.myftp.service.impl;
 
 import com.edithking.myftp.entity.FileOperation;
+import com.edithking.myftp.entity.FileProperties;
 import com.edithking.myftp.enumentity.OperationType;
 import com.edithking.myftp.service.FileReadService;
+import com.edithking.myftp.svn.SvnUtil;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
@@ -13,6 +15,7 @@ import java.io.FileInputStream;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Properties;
 
 @Slf4j
 @Service
@@ -25,6 +28,10 @@ public class FileReadServiceImpl implements FileReadService {
     @Getter
     @Setter
     private String fileContext;
+
+    @Getter
+    @Setter
+    private FileProperties fileProperties;
 
     /**
      * 获取fileContext 文件中的内容 格式: 文件传输类型(A,U,D)以及文件在本地的绝对路径去掉本地文件开头目录
@@ -46,11 +53,17 @@ public class FileReadServiceImpl implements FileReadService {
             } catch (Exception e) {
                 e.printStackTrace();
             }
-            return fileOperations;
-        } else {
-            log.error("需要上传的内容的文件为空，", fileContext);
-            return null;
+           if(fileOperations.size() != 0){
+               return fileOperations;
+           }
         }
+        System.out.println("ipm:" + fileProperties);
+        log.info("从svn获取更新记录");
+        fileOperations = SvnUtil.getFileOperationToSvn(fileProperties);
+        if(fileOperations.size() != 0){
+            return fileOperations;
+        }
+        return null;
     }
 
     /**
@@ -71,14 +84,14 @@ public class FileReadServiceImpl implements FileReadService {
             default:
                 break;
         }
-        if (fileContext.startsWith("Add :")) {
-            return new FileOperation(OperationType.ADD.typeId, fileContext.substring("Add :".length()));
+        if (fileContext.startsWith("Added : ")) {
+            return new FileOperation(OperationType.ADD.typeId, fileContext.substring("Added : ".length()));
         }
-        if (fileContext.startsWith("Update :")) {
-            return new FileOperation(OperationType.UPDATE.typeId, fileContext.substring("Update :".length()));
+        if (fileContext.startsWith("Updated : ")) {
+            return new FileOperation(OperationType.UPDATE.typeId, fileContext.substring("Updated : ".length()));
         }
-        if (fileContext.startsWith("Delete :")) {
-            return new FileOperation(OperationType.DELETE.typeId, fileContext.substring("Delete :".length()));
+        if (fileContext.startsWith("Deleted : ")) {
+            return new FileOperation(OperationType.DELETE.typeId, fileContext.substring("Deleted : ".length()));
         }
         return new FileOperation(OperationType.UPDATE.typeId, fileContext);
     }
