@@ -58,7 +58,12 @@ public class FileProperties {
     /**
      * svn最后版本
      */
-    private Long latestRevision;
+    private Long lastestRevision;
+
+    /**
+     * svn功能
+     */
+    private Boolean svnClose;
 
     /**
      * 新增路径开头替换
