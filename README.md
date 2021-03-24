@@ -1,5 +1,5 @@
 # myftp
-个人实现本地以及主机文件替换和删除
+实现文件传输,可根据文件指定文件传输,根据svn更新记录传输
 
 ### 文件传输工具ftp
 
@@ -28,7 +28,16 @@
    fileContext:fileConext.txt
    #目录名替换(本地为A，目标目录是B)
    replacePath:A=B,A1=B1
-   
+   #svn登陆路径
+   svnUrl:
+   #svn文件名路径
+   svnPath:
+   #svn的用户
+   svnUsername:
+   #svn的密码
+   svnPassword:
+   # 获取svn记录开关
+   svnClose:false
    ```
 
 3. 需要上传的文件列表：（默认fileConext.txt）
@@ -39,8 +48,9 @@
    AC:/test.txt
    Atest.txt
    ```
+4.如果上传文件列表为空,获取svn更新记录开启,那么会从文件last.txt的所记录的最后一次上传的版本号为开始到最新的svn的更新的文件列表,然后将本地文件上传到对应主机目录,并且会更新last.txt文件,记录这次提交的版本号
 
-4. 运行jar包：java -jar myftp-1.0.jar
+5. 运行jar包：java -jar myftp-1.0.jar
 
 
 
